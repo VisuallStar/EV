@@ -1,0 +1,195 @@
+import 'package:flutter/services.dart';
+import 'dart:async';
+import 'dart:developer' as developer;
+
+class ScreenAutomationService {
+  static const _channel = MethodChannel('com.ev/accessibility');
+  static const _channelTimeout = Duration(seconds: 3);
+
+  static Future<T?> _invoke<T>(String method, [Map<String, Object?>? arguments]) {
+    return _channel
+        .invokeMethod<T>(method, arguments)
+        .timeout(_channelTimeout, onTimeout: () {
+      throw TimeoutException(
+        'Accessibility channel did not reply to $method within '
+        '${_channelTimeout.inSeconds}s',
+      );
+    });
+  }
+
+  Future<bool> waitUntilReady() async {
+    try {
+      return await _invoke<bool>('ping') ?? false;
+    } catch (e) {
+      developer.log('Accessibility channel readiness check failed: $e', name: 'EV');
+      return false;
+    }
+  }
+
+  static Future<void> logToNative(String message) async {
+    try {
+      await _invoke<bool>('logToNative', {'message': message});
+    } catch (_) {}
+  }
+
+  Future<bool> isServiceRunning() async {
+    try {
+      return await _invoke<bool>('isServiceRunning') ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> openAccessibilitySettings() async {
+    await _channel.invokeMethod('openAccessibilitySettings');
+  }
+
+  Future<List<Map<String, dynamic>>> dumpScreen() async {
+    try {
+      final result = await _channel.invokeMethod<List>('dumpScreen');
+      if (result == null) return [];
+      return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<String?> takeScreenshot() async {
+    try {
+      return await _channel.invokeMethod<String>('takeScreenshot');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<String> getScreenDescription() async {
+    final nodes = await dumpScreen();
+    if (nodes.isEmpty) {
+      return 'Could not read screen. Make sure accessibility service is enabled.';
+    }
+    final buffer = StringBuffer();
+    final pkg = await getCurrentPackage();
+    if (pkg != null) buffer.writeln('Current app: $pkg');
+    buffer.writeln('Screen elements:');
+    for (final node in nodes) {
+      final index = node['index'];
+      final text = node['text'] ?? '';
+      final desc = node['contentDescription'] ?? '';
+      final className = node['className'] ?? '';
+      final isClickable = node['isClickable'] == true;
+      final isEditable = node['isEditable'] == true;
+      final isScrollable = node['isScrollable'] == true;
+      String displayText = text.isNotEmpty ? text : desc;
+      if (displayText.isEmpty && !isClickable && !isEditable && !isScrollable) continue;
+      if (displayText.length > 200) displayText = '${displayText.substring(0, 200)}...';
+      final tags = <String>[];
+      if (isClickable) tags.add('clickable');
+      if (isEditable) tags.add('editable');
+      if (isScrollable) tags.add('scrollable');
+      final label = displayText.isNotEmpty ? '"$displayText"' : '(no text)';
+      final type = className.isNotEmpty ? '[$className]' : '';
+      final tagStr = tags.isNotEmpty ? '{${tags.join(", ")}}' : '';
+      String boundsStr = '';
+      if (node['bounds'] != null) {
+        final b = node['bounds'];
+        final centerX = (b['left'] + b['right']) / 2;
+        final centerY = (b['top'] + b['bottom']) / 2;
+        boundsStr = ' bounds:[${b['left']},${b['top']},${b['right']},${b['bottom']}] center:(${centerX.round()},${centerY.round()})';
+      }
+      buffer.writeln('  [$index] $type $label $tagStr$boundsStr');
+    }
+    return buffer.toString();
+  }
+
+  Future<String> getCompressedScreenDescription(String task) async {
+    final nodes = await dumpScreen();
+    if (nodes.isEmpty) {
+      return 'Could not read screen. Make sure accessibility service is enabled.';
+    }
+    final buffer = StringBuffer();
+    final pkg = await getCurrentPackage();
+    if (pkg != null) buffer.writeln('APP: $pkg');
+    final stopWords = {'to', 'and', 'the', 'a', 'in', 'of', 'for', 'on', 'with', 'at', 'by', 'from', 'go', 'turn', 'open'};
+    final keywords = task.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\s]'), '').split(RegExp(r'\s+')).where((w) => w.isNotEmpty && !stopWords.contains(w)).toList();
+    for (final node in nodes) {
+      final index = node['index'];
+      final text = node['text'] ?? '';
+      final desc = node['contentDescription'] ?? '';
+      final className = node['className'] ?? '';
+      final isClickable = node['isClickable'] == true;
+      final isEditable = node['isEditable'] == true;
+      final isScrollable = node['isScrollable'] == true;
+      String displayText = text.isNotEmpty ? text : desc;
+      final lowerText = displayText.toLowerCase();
+      if (lowerText.contains('battery') || lowerText.contains('percent') ||
+          lowerText.contains('do not disturb') || lowerText.contains('three bars') ||
+          RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lowerText)) continue;
+      if (displayText.isEmpty && !isClickable && !isEditable && !isScrollable) continue;
+      if (displayText.length > 50) displayText = '${displayText.substring(0, 50)}...';
+      final tags = <String>[];
+      if (isClickable) tags.add('tap');
+      if (isEditable) tags.add('edit');
+      if (isScrollable) tags.add('scroll');
+      String type = className.split('.').last;
+      if (type == 'TextView') type = 'text';
+      else if (type == 'Button') type = 'btn';
+      else if (type == 'Switch') type = 'toggle';
+      else if (type == 'ImageView') type = 'img';
+      else if (type == 'EditText') type = 'input';
+      else if (type == 'FrameLayout' || type == 'LinearLayout') type = 'view';
+      else type = type.toLowerCase();
+      final label = displayText.isNotEmpty ? '"$displayText"' : '';
+      final tagStr = tags.isNotEmpty ? '[${tags.join(",")}]' : '';
+      bool isTarget = false;
+      if (displayText.isNotEmpty) {
+        for (var kw in keywords) {
+          if (lowerText.contains(kw)) { isTarget = true; break; }
+        }
+      }
+      final targetMark = isTarget ? '*' : '';
+      String boundsStr = '';
+      if (node['bounds'] != null) {
+        final b = node['bounds'];
+        final centerX = (b['left'] + b['right']) / 2;
+        final centerY = (b['top'] + b['bottom']) / 2;
+        boundsStr = ' center:(${centerX.round()},${centerY.round()})';
+      }
+      buffer.writeln('[$index]$targetMark $type $label $tagStr$boundsStr'.trim().replaceAll(RegExp(r'\s+'), ' '));
+    }
+    return buffer.toString();
+  }
+
+  Future<bool> clickByText(String text) async {
+    try { return await _channel.invokeMethod<bool>('clickByText', {'text': text}) ?? false; } catch (e) { return false; }
+  }
+  Future<bool> clickAt(double x, double y) async {
+    try { return await _channel.invokeMethod<bool>('clickAt', {'x': x, 'y': y}) ?? false; } catch (e) { return false; }
+  }
+  Future<bool> typeText(String text, {String? fieldHint}) async {
+    try { return await _channel.invokeMethod<bool>('typeText', {'text': text, 'fieldHint': fieldHint}) ?? false; } catch (e) { return false; }
+  }
+  Future<bool> pressEnter() async {
+    try { return await _channel.invokeMethod<bool>('pressEnter') ?? false; } catch (e) { return false; }
+  }
+  Future<bool> scroll(String direction, {String? target}) async {
+    try { return await _channel.invokeMethod<bool>('scroll', {'direction': direction, 'target': target}) ?? false; } catch (e) { return false; }
+  }
+  Future<bool> swipe(double startX, double startY, double endX, double endY) async {
+    try { return await _channel.invokeMethod<bool>('swipe', {'startX': startX, 'startY': startY, 'endX': endX, 'endY': endY}) ?? false; } catch (e) { return false; }
+  }
+  Future<bool> pressBack() async {
+    try { return await _channel.invokeMethod<bool>('pressBack') ?? false; } catch (e) { return false; }
+  }
+  Future<bool> pressHome() async {
+    try { return await _channel.invokeMethod<bool>('pressHome') ?? false; } catch (e) { return false; }
+  }
+  Future<void> showToast(String message) async {
+    try { await _channel.invokeMethod('showToast', {'message': message}); } catch (e) {}
+  }
+  Future<bool> openNotifications() async {
+    try { return await _channel.invokeMethod<bool>('openNotifications') ?? false; } catch (e) { return false; }
+  }
+  Future<String?> getCurrentPackage() async {
+    try { return await _channel.invokeMethod<String>('getCurrentPackage'); } catch (e) { return null; }
+  }
+}
