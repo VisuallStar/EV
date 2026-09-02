@@ -134,8 +134,10 @@ class ActionHandler {
           final goal = params['goal'] as String? ?? '';
           final executor = TaskExecutor(
             aiService: aiService,
-            screenAutomation: screenAutomation,
-            actionHandler: this,
+            screenService: screenAutomation,
+            appLauncher: appLauncher,
+            shizukuService: shizuku,
+            onProgress: onProgress,
           );
           result = await executor.executeTask(
             goal,
