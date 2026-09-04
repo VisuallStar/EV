@@ -4,7 +4,7 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.3
+  sdk: ^3.5.0
 
 dependencies:
   flutter_overlay_window: ^0.5.6
@@ -47,7 +47,6 @@ dependencies:
   flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
-  flutter_overlay_window: ^0.5.6
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0

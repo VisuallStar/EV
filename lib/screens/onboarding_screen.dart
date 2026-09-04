@@ -1178,14 +1178,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 _buildFormTextField(
                   controller: _baseUrlController,
                   label: 'API Base URL',
-                  hint: 'https://api.deepseek.com',
+                  hint: 'https://api.groq.com/openai/v1',
                   isDark: isDark,
                 ),
                 const SizedBox(height: 16),
                 _buildFormTextField(
                   controller: _modelController,
                   label: 'Model Name',
-                  hint: 'deepseek-chat',
+                  hint: 'llama-3.3-70b-versatile',
                   isDark: isDark,
                   suffix: IconButton(
                     icon: _isValidating
