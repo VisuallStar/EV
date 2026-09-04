@@ -7,7 +7,8 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  flutter_overlay_window: ^0.5.6
+  flutter_overlay_window:
+    path: local_plugins/flutter_overlay_window
   flutter:
     sdk: flutter
 
