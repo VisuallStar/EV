@@ -23,6 +23,18 @@ class ActionHandler {
   final ShizukuService shizuku = ShizukuService();
   final NotificationService notification = NotificationService();
 
+  bool _taskCancelled = false;
+
+  void cancelTask() {
+    _taskCancelled = true;
+  }
+
+  void resetCancellation() {
+    _taskCancelled = false;
+  }
+
+  bool get isTaskCancelled => _taskCancelled;
+
   Future<AgentActionResult> execute(
     Map<String, dynamic> actionData, {
     required AiService aiService,
@@ -33,6 +45,7 @@ class ActionHandler {
     final response = actionData['response'] as String? ?? '';
 
     try {
+      _taskCancelled = false;
       String result;
       switch (action) {
         case 'open_app':
@@ -132,6 +145,10 @@ class ActionHandler {
 
         case 'execute_task':
           final goal = params['goal'] as String? ?? '';
+          if (_taskCancelled) {
+            result = 'Task was cancelled.';
+            break;
+          }
           final executor = TaskExecutor(
             aiService: aiService,
             screenService: screenAutomation,

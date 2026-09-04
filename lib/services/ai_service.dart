@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/agent_action.dart';
 
 class AiService {
   // Provider presets
@@ -47,6 +48,13 @@ class AiService {
       'defaultModel': 'default',
     },
   };
+
+  static const String nvidiaBaseUrl = 'https://integrate.api.nvidia.com/v1';
+  static const String nvidiaDefaultModel = 'meta/llama-3.1-8b-instruct';
+
+  static bool isNvidiaBaseUrl(String baseUrl) {
+    return baseUrl.toLowerCase().contains('integrate.api.nvidia.com');
+  }
 
   String _apiKey = '';
   String _baseUrl = 'https://api.groq.com/openai/v1';
@@ -170,6 +178,10 @@ IMPORTANT:
   }
 
   List<Map<String, String>> get conversationHistory => _conversationHistory;
+
+  void addHistoryMessage(String role, String content) {
+    _conversationHistory.add({'role': role, 'content': content});
+  }
 
   // Detect provider type from base URL
   String _detectProviderType() {
@@ -365,7 +377,7 @@ IMPORTANT:
   }
 
   // Streaming message
-  Stream<String> sendMessageStream(String userMessage) async* {
+  Stream<String> sendMessageStream(String userMessage, {bool isAgentMode = false}) async* {
     if (!isConfigured) {
       yield 'AI is not configured. Please set up API in Settings.';
       return;

@@ -32,13 +32,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   bool _isOverlayGranted = false;
 
   // AI config states
-  String _selectedProvider = 'deepseek';
+  String _selectedProvider = 'groq';
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController(
-    text: 'https://api.deepseek.com',
+    text: 'https://api.groq.com/openai/v1',
   );
   final TextEditingController _modelController = TextEditingController(
-    text: 'deepseek-chat',
+    text: 'llama-3.3-70b-versatile',
   );
   bool _obscureKey = true;
   bool _isValidating = false;
@@ -157,21 +157,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() {
       _selectedProvider = provider;
       _validationError = null;
-      if (provider == 'deepseek') {
-        _baseUrlController.text = 'https://api.deepseek.com';
-        _modelController.text = 'deepseek-chat';
-      } else if (provider == 'groq') {
-        _baseUrlController.text = 'https://api.groq.com/openai/v1';
-        _modelController.text = 'llama-3.3-70b-versatile';
-      } else if (provider == 'nvidia') {
-        _baseUrlController.text = AiService.nvidiaBaseUrl;
-        _modelController.text = AiService.nvidiaDefaultModel;
+      final preset = AiService.providerPresets[provider];
+      if (preset != null && preset['baseUrl']!.isNotEmpty) {
+        _baseUrlController.text = preset['baseUrl']!;
+        _modelController.text = preset['defaultModel']!;
       } else if (provider == 'ollama') {
         _baseUrlController.text = 'http://10.0.2.2:11434/v1';
-        _modelController.text = 'gemma2';
+        _modelController.text = AiService.providerPresets['ollama']!['defaultModel']!;
       } else if (provider == 'local') {
         _baseUrlController.text = 'http://10.0.2.2:1234/v1';
-        _modelController.text = 'qwen2.5-7b-instruct';
+        _modelController.text = AiService.providerPresets['local']!['defaultModel']!;
       } else {
         _baseUrlController.clear();
         _modelController.clear();

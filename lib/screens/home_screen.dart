@@ -483,29 +483,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ? const Color(0xFF0C0A15)
           : const Color(0xFFFFFFFF),
       appBar: AppBar(
-        title: RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 20,
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
-            ),
-            children: [
-              TextSpan(
-                text: 'Private',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: Theme.of(context).colorScheme.primary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const TextSpan(
-                text: 'Agent',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
+        title: Text(
+          'EV',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: Theme.of(context).colorScheme.primary,
+            letterSpacing: -0.5,
           ),
         ),
         backgroundColor: Colors.transparent,

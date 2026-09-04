@@ -472,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 controller: _baseUrlController,
                 decoration: _buildInputDecoration(
                   labelText: 'API Base URL',
-                  hintText: 'https://api.deepseek.com',
+                  hintText: 'https://api.groq.com/openai/v1',
                   prefixIcon: const Icon(Icons.dns_rounded, size: 18),
                 ),
               ),
@@ -541,7 +541,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       controller: _modelController,
                       decoration: _buildInputDecoration(
                         labelText: 'Model',
-                        hintText: 'deepseek-chat',
+                        hintText: 'llama-3.3-70b-versatile',
                         prefixIcon: const Icon(
                           Icons.smart_toy_rounded,
                           size: 18,
@@ -836,7 +836,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 leading: const Icon(Icons.code_rounded),
                 onTap: () {
                   launchUrl(
-                    Uri.parse('https://github.com/orailnoor/private-agent'),
+                    Uri.parse('https://github.com/VisuallStar/EV.git'),
                     mode: LaunchMode.externalApplication,
                   );
                 },
